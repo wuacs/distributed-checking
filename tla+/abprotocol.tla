@@ -1,7 +1,7 @@
------------------------------ MODULE ABP -----------------------------
+----------------------------- MODULE abprotocol -----------------------------
 EXTENDS Naturals, Sequences
 
-CONSTANT K
+CONSTANT K, N, Q
 
 VARIABLES ch12, ch21, sap1, sap2, bit1, bit2
 vars == << ch12, ch21, sap1, sap2, bit1, bit2 >>
@@ -29,7 +29,7 @@ ReceiveExpectedACK ==
        /\ v = bit1
        /\ ch21' = Tail(ch21)
        /\ bit1' = (bit1 + 1) % 2
-       /\ sap1' = sap1 + 1
+       /\ sap1' = (sap1 + 1) % N
   /\ UNCHANGED << ch12, sap2, bit2 >>
 
 \* Sender: unexpected/stale ACK -> drop it
@@ -55,12 +55,12 @@ ReceiveMSG ==
 ReceiveDuplicate ==
   /\ headok(ch12)
   /\ LET v == Head(ch12) IN
-       /\ v[2]
+       /\ v[2] # bit2
        /\ ch12' = Tail(ch12)
        /\ ch21' = Append(ch21, (1 - bit2))
   /\ UNCHANGED << sap1, sap2, bit1, bit2 >>
 
-Liveness(K) == \A x \in 0..K : (sap1 = x) ~> (sap2 = x)
+Liveness(T) == \A x \in 0..T : (sap1 = x) ~> (sap2 = x)
 
 Next ==
   \/ SendMSG
@@ -68,8 +68,9 @@ Next ==
   \/ ReceiveUnexpectedACK
   \/ ReceiveMSG
   \/ ReceiveDuplicate
+  
 
-Spec == Init /\ [][Next]_vars /\ WK_vars(ReceiveExpectedACK) /\ WK_vars(ReceiveMSG)
+Spec == Init /\ [][Next]_vars /\ WF_vars(ReceiveExpectedACK) /\ WF_vars(ReceiveMSG)
 
 THEOREM Spec => Liveness(K)
 =============================================================================
